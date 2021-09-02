@@ -1,27 +1,28 @@
-
+me = "imnotender"
 //Important globals 
 
-start_pos = "top" // bottom or top
-mid_star = star_p89
+
 energy_threshold = 30
-me = "imnotender"
+
 fallback = false
-all_in = true
+all_out = false //all spirits become #attacking after getting fully charged
 all_to_outpost = false
 //-----------------------------------
 
 
 
 //Define base and enemy stars based on spawn location
-if (start_pos == "bottom") {
+if (base.position == [1600,700]) {
     base_star = star_a1c;
     enemy_star = star_zxq;
 }
 
-else if (start_pos == "top"){
-    base_star = star_zxq;
-    enemy_star = star_a1c
+else {
+    base_star = star_a1c
+    enemy_star = star_zxq
 }
+
+mid_star = star_p89
 
 //TODO:
 //Check if enemies in sight have more energy in total than friends in sight
@@ -44,7 +45,7 @@ Spirits can have three roles:
  1,2 -> scouts
 
 */
-
+console.log(memory.i)
 if (memory.i == null)
 {
     memory.i = 0;
@@ -55,7 +56,7 @@ for (i = memory.i; i < my_spirits.length; i++){
 
   //my_spirits[i].move(my_spirits[6].position);
  //my_spirits[i].merge(my_spirits[6]);
-  if ((i % 2) == 0) {
+  if ((i % 2) != 0) {
       my_spirits[i].set_mark("charging_base")
   }
   else {
@@ -63,6 +64,7 @@ for (i = memory.i; i < my_spirits.length; i++){
   }
   memory.i = i;
 }
+//-----------------------------------
 
 function get_star_by_id(id) {
     if (id == star_a1c.id) {
@@ -119,7 +121,7 @@ function charge_base(spirit) {
 function attack(spirit) {
     spirit.set_mark("attacking")
     
-    if (outpost.energy < 500) {
+    if (outpost.energy < 50) {
         if (spirit.last_energized != outpost.id) {
             spirit.move(outpost.position)
         }
@@ -135,13 +137,14 @@ function attack(spirit) {
     }
     
     
-    else {
+    else if (all_out && true) {
         
         spirit.move(enemy_base.position)
         spirit.energize(enemy_base)
-    }
+    } 
     
 }
+
 
 function retreat() {
     spirit.set_mark("retreating")
@@ -151,6 +154,9 @@ function retreat() {
         spirit.move(nearest_star.position)
     }
     spirit.energize(spirit)
+    
+    if (spirit.energy == spirit.energy_threshold) 
+        attack(spirit);
 }
 
 //TODO: Spirit should lock in on weakest_spirit (only calling this once) until it's dead
@@ -170,40 +176,33 @@ function get_weakest_enemy(enemy_ids) {
     return weakest_enemy;
 }
 
+
+function get_distance(pos1, pos2) {
+    let x1, y1 = pos1
+    let x2, y2 = pos2
+    d = Math.sqrt((x1-x2)**2 + (y1-y2)**2)
+}
+
 //TODO: Substituir isto pela actual distancia (com fórmula da distanica e whatever)
 //e devolver estrela cuja distancua é menor
-function get_nearest_star(structure_ids) {
-    //Safeguard for no nearby structs
-    if (structure_ids.length == 0) 
+function get_nearest_star(spirit) {
+    //Distance to base star
+    d_basestar = get_distance(spirit.position, base_star.position)
+    
+    d_enemystar = get_distance(spirit.position, enemy_star.position)
+    
+    d_midstar = get_distance(spirit.position, mid_star.position)
+    
+    if ((d_basestar < d_midstar)) //Spirit is between mid star and base
         return base_star
-        
-    for (struct_id of structure_ids) {
-        if (struct_id == outpost.id) 
-            return mid_star
-        else if (struct_id == base) 
-            return base_star
-        else if (struct_id == enemy_base)
-            return enemy_star
-        
-    }
-    //dirty way of doing things but can't think of anything better atm
-    for (struct_id of structure_ids) {
-        //Stars
-        if (struct_id == base_star.id) 
-            return base_star
-        else if (struct_id == enemy_star.id) 
-            return enemy_star
-            
-        else if (struct_id == mid_star.id && tick >= 200)
-            return mid_star
-    }
-    //If we're still here spirit isn't near a star, let's try other structs
-
-    return base_star
+    else if (d_enemystar < d_midstar)
+        return enemy_star
+    else 
+    return mid_star
     }
 
 //Charge to the base with all we got
-if (all_in && true) {
+if (all_out && true) {
     for (spirit of my_spirits) {
         if (spirit.mark == "retreating") {
             
@@ -245,26 +244,15 @@ for (spirit of my_spirits) {
         }
     }
 
-    //-----------------------------------
-    
     //Attacking logic
-    else if (spirit.mark == "attacking") {
-        if (spirit.energy <= energy_threshold) {
-            retreat(spirit)
-        }
-        else {
-            attack(spirit)
-        }
-    }
-    else if (spirit.mark == "retreating") {
-        if (spirit.energy == spirit.energy_capacity) {
-            attack(spirit)
-            
-        }
-        else {
-            retreat(spirit)
-        }
-    }
+    else if (spirit.mark == "attacking") 
+        attack(spirit)
+        
+    
+    else if (spirit.mark == "retreating") 
+        retreat(spirit)
+        
+    
     
     spirit.shout(spirit.mark)
     
