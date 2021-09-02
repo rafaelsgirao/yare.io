@@ -2,19 +2,23 @@ me = "imnotender"
 //Important globals 
 
 
-energy_threshold = 30
-
-fallback = false
+attacking_threshold = 3
+charging_threshold = 0
+outpost_min_energy = 500
+star_min_energy = 200
+merge_attackers = false
+fallback = true
 all_out = false //all spirits become #attacking after getting fully charged
 all_to_outpost = false
+
 //-----------------------------------
 
 
 
 //Define base and enemy stars based on spawn location
 if (base.position == [1600,700]) {
-    base_star = star_a1c;
-    enemy_star = star_zxq;
+    base_star = star_zxq
+    enemy_star = star_a1c;
 }
 
 else {
@@ -49,7 +53,9 @@ console.log(memory.i)
 if (memory.i == null)
 {
     memory.i = 0;
+    
 }
+
 
 // INIT SPIRITS' ROLE
 for (i = memory.i; i < my_spirits.length; i++){ 
@@ -83,9 +89,9 @@ function get_star_by_id(id) {
 function charge_self(spirit) {
     spirit.set_mark("charging_self")
     if (spirit.last_energized != spirit.id) {
-        if (base_star.energy >= 200) 
+        if (base_star.energy >= star_min_energy) 
             spirit.move(base_star.position)
-        else if (mid_star.energy >= 200)
+        else if (mid_star.energy >= star_min_energy)
             spirit.move(mid_star.position)
         else {
             spirit.move(base.position)
@@ -98,7 +104,7 @@ function charge_self(spirit) {
     //Is only called if null, fix
     //console.log(last_drained_star)
     if (last_drained_star != null) {
-        if(last_drained_star.energy > 200) {
+        if(last_drained_star.energy > star_min_energy) {
             spirit.energize(spirit)
         }
         return
@@ -109,7 +115,7 @@ function charge_self(spirit) {
 
 function charge_base(spirit) {
     spirit.set_mark("charging_base")
-    if (spirit.energy <= energy_threshold) {
+    if (spirit.energy <= charging_threshold) {
         charge_self(spirit)
     }
     if (spirit.last_energized != base.id)
@@ -121,7 +127,12 @@ function charge_base(spirit) {
 function attack(spirit) {
     spirit.set_mark("attacking")
     
-    if (outpost.energy < 50) {
+    if (spirit.energy <= attacking_threshold) {
+        retreat(spirit)
+        return
+    }
+    
+    if (outpost.energy < outpost_min_energy) {
         if (spirit.last_energized != outpost.id) {
             spirit.move(outpost.position)
         }
@@ -132,17 +143,14 @@ function attack(spirit) {
         spirit.energize(spirit)
     }
     
-    if (spirit.energy <= energy_threshold) {
-        retreat(spirit)
-    }
     
-    
-    else if (all_out && true) {
+
+    if (all_out && true) {
         
         spirit.move(enemy_base.position)
         spirit.energize(enemy_base)
     } 
-    
+
 }
 
 
@@ -155,7 +163,7 @@ function retreat() {
     }
     spirit.energize(spirit)
     
-    if (spirit.energy == spirit.energy_threshold) 
+    if (spirit.energy == spirit.energy_capacity) 
         attack(spirit);
 }
 
@@ -225,10 +233,12 @@ if (all_out && true) {
 }
 
 for (spirit of my_spirits) {
-
+    if (spirit.hp == 0)
+        continue
+    
     //Charging and guarding logic
     if (spirit.mark == "charging_base") {
-        if (spirit.energy <= energy_threshold) {
+        if (spirit.energy <= charging_threshold) {
             charge_self(spirit)
         }
         else {
@@ -245,8 +255,22 @@ for (spirit of my_spirits) {
     }
 
     //Attacking logic
-    else if (spirit.mark == "attacking") 
-        attack(spirit)
+    else if (spirit.mark == "attacking") {
+        if (merge_attackers == true) {
+            console.log(neo.size)
+            if (neo == null || neo.hp == 0 || neo.size == 100)
+        
+                neo = spirit
+            else
+                spirit.move(neo.position)
+                if (spirit != neo)
+                    spirit.merge(neo)
+        }
+        else {
+            attack(spirit)
+        }
+    }
+        
         
     
     else if (spirit.mark == "retreating") 
@@ -287,3 +311,4 @@ if (base.sight.enemies.length > 0) {
     }
     
 }
+
